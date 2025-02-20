@@ -1,0 +1,11 @@
+#1. FINAL PROJECT IDEA
+
+#2. The idea: 
+To anaylze the effect of sleep cycles on things like academic success, productivity and stress.
+
+#3. The ideal data would include variables about sleep such as the quantity of sleep, quality of sleep, location, time of going to sleep and waking up, and similar variables.
+There would also be variables about academic success, productivity and stress such as gpa, hours worked, how long after awakening does work start, difficulty of task, productivity score, stress levels etc...
+
+#4. Skipped, I have data set "https://cmustatistics.github.io/data-repository/psychology/cmu-sleep.html"
+
+#5. See .R file and .png in Assignment 4 folder
