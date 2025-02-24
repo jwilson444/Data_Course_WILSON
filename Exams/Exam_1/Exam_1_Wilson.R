@@ -13,6 +13,7 @@ A_states <- cleaned_covid_data %>%
 # Create a scatterplot
 # Add loess curves WITHOUT standard error shading
 # Keep scales “free” in each facet
+library(ggplot2)
 A_states %>%
   mutate(Last_Update = as.Date(Last_Update, format = "%Y-%m-%d")) %>%
   filter(!is.na(Last_Update), !is.na(Deaths), !is.na(Province_State)) %>%
