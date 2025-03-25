@@ -178,10 +178,12 @@ mean(dat_bill$body_mass_g)
 dat_bill$body_mass_g %>%
   mean()
 ### Ex: Find and calculate mean body mass by species
-penguins %>% 
+penguins1 <- penguins %>% 
   filter(bill_length_mm > 40 & sex == 'female') %>%
   group_by(species) %>%
   summarise(mean_body_mass = mean(body_mass_g))
+
+View(penguins1)
 
 ## Count ####
 penguins %>% 
@@ -197,6 +199,7 @@ penguins %>%
   summarise(mean_body_mass = mean(body_mass_g), max_body_mass = max(body_mass_g), 
             count = n()) %>%
   arrange(desc(mean_body_mass))
+View(penguins)
 
 ## Saving data as csv ####
 write_csv(data, 'filepath')
@@ -709,11 +712,31 @@ geocode('800 W University parkway, Orem, UT')
 ##ggmagnify ####
 
 
-# Practice (cleaning data) ####
+# Cleaning data ####
 df <- read_csv('Data/wide_income_rent.csv')
 ## read this data and plot rent for each state
 ## hint: x-axis = state, y-axis = rent, bar chart
 
+## pivot_longer/wider ####
+## pivot_longer takes the data frame and puts them in vertical fashion on the columns you give
+## pivot_wider will take values and combine them to widen the data
+## see below, compare df, df1, and df2
+
+df1 <- df %>%
+  pivot_longer(cols = -variable,
+               names_to = 'States',
+               values_to = 'Values')
+
+df2 <- df1 %>%
+  pivot_wider(names_from = 'variable',
+              values_from = 'Values')
+
+df2 %>%
+  ggplot(aes(x = state, y = income)) +
+  geom_bar() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+  
 df_t <- t(df) # BAD, variable, rent, incomee are included as data
 df_t <- df_t[-1,1]
 df_t$state <- row.names(df_t)
@@ -723,8 +746,6 @@ ggplot(df_t, aes(x = state, y = rent)) +
   geom_bar(state = 'identity') +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
   
-?pivot_longer
-?pivot_wider
 
 dat_ex <- data.frame(
   Id = c(1, 2, 3),
@@ -733,12 +754,484 @@ dat_ex <- data.frame(
 
 dat_ex %>%
   pivot_longer(cols = c(Weight, Height), 
+               names_to = 'Measurement',
+               values_to = 'Value') %>%
+  View()
+
+dat_ex %>%
+  pivot_longer(cols = Height, 
+               names_to = 'Height',
+               values_to = 'cm') %>%
+  View()
+
+dat_ex %>%
+  pivot_longer(cols = everything(), 
                names_to = 'Measure',
                values_to = 'Value') %>%
   View()
 
+dat_long <- dat_ex %>%
+  pivot_longer(cols = -Id,
+               names_to = 'Measure',
+               values_to = 'Value')
 
-## Try to make longer data frame back to original using 'pivot wider'
+  View(dat_long)
+
+dat_long %>%
+  pivot_wider(names_from = 'Measure',
+              values_from = 'Value')
+  View()
+
+## More Cleaning Data ####
+table2 # make it better
+table2butprettier <-  table2 %>%
+    pivot_wider(names_from = 'type',
+                values_from = 'count')
+  View(table2butprettier)
+
+table3 # what's wrong? the rate column is confusing?
+# need to separate the values in rate
+## separate() 
+
+table3butprettier <- table3 %>%
+  separate(rate, c('col1', 'col2'))
+
+# fix these two tables to look like table1 ####
+View(table4a) # years are the cols here
+# make the year variables into a column instead
+table4abutprettier <- table4a %>%
+  pivot_longer(cols = -country,
+               names_to = 'Year',
+               values_to = 'Cases')
+
+table4b
+table4bbutprettier <- table4b %>%
+  pivot_longer(cols = -country,
+               names_to = 'Year',
+               values_to = 'Pop')
+
+# Now need to combine the two tables so no cols are missing
+## Joining cols from different data frames ####
+table4butprettier <- full_join(table4abutprettier, table4bbutprettier)
+
+View(table4butprettier)
+
+# Now table 5, the final boss
+table5 #Need to combine century and year and separate cases/pop, also make cols numeric
+## Combining cols 'XX' + 'YY' = 'XXYY' ####
+paste0(table5$century, table5$year) 
+
+table5butprettier <- table5 %>%
+  mutate(Year = paste0(century, year)) %>%
+  select(-c(century, year)) %>%
+  separate(rate, c('Cases', 'Pop'), convert = T) %>% # convert = T makes them convert to whatever logical vector makes sense based on what the data looks like
+  View()
+
+# Reading in and cleaning Excel Data ####
+## Daat from .txt file must be entered to excel (or Google Sheets) ####
+##path ..//Exercises/Data_Entry_Case_Study.txt
+
+### Excel tips: ####
+# * Highlight a col, use data validation to only allow the values/characters you want
+    ## Use List "XXX, YYY, CDDFDF" and that will make it so only that is allowed
+# Protect the sheet once done so nothing gets messed up
+
+## Reading in Excel Data .xlsx ####
+library(readxl)
+BP <- read_excel('Data/messy_bp.xlsx')
+View(BP)
+
+## Cleaning the Data ####
+#What's wrong? = Title rows, make col for visit#, BP needs separated, duplicate pt_id, Race - whites
+
+###Remove confusing rows ####
+#Remove row 1 and 2, as well as empty values in row 3
+#add 'skip = int' to read in 
+
+BP1 <- read_excel('Data/messy_bp.xlsx', skip = 3) #skips the first 3 rows
+View(BP1)
+
+###Make one col for BP and one col for visit#, separate BP into sys and dia cols ####
+
+BP5 <- BP1 %>%
+  pivot_longer(starts_with('BP'),
+               names_to = 'visit',
+               values_to = 'BP') %>%
+  pivot_longer(starts_with('HR'),
+               names_to = 'vvisit',
+               values_to = 'HR') %>%
+  mutate(Visit = case_when(visit == 'BP...8' ~ 1,
+                           visit == 'BP...10' ~ 2,
+                           visit == 'BP...12' ~ 3,
+                           vvisit == 'HR...9' ~ 1,
+                           vvisit == 'HR...11' ~ 2,
+                           vvisit == 'HR...13' ~ 3)) %>%
+  separate(BP, c('Systolic', 'Diastolic')) %>%
+  select(-starts_with(c('BP...', 'HR...'))) %>%
+  select(-c('visit','vvisit'))
+View(BP5)
+
+
+BPonly <- BP1 %>% 
+  select(-starts_with('HR')) # remove HR to make it a little easier
+
+BPonly1 <- BPonly %>%
+  pivot_longer(starts_with('BP'), # make our visit col
+               names_to = 'visit',
+               values_to = 'BP') %>%
+  mutate(visit = case_when(visit == 'BP...8' ~ 1,
+                           visit == 'BP...10' ~ 2,
+                           visit == 'BP...12' ~ 3)) %>%
+  separate(BP, c('Systolic', 'Diastolic'))%>% #separate to sys and dia cols
+  mutate(Systolic = as.numeric(Systolic)) %>%
+  mutate(Diastolic = as.numeric(Diastolic))
+View(BPonly1)
+
+HRonly <- BP1 %>% #remove BP to make it easier
+  select(-starts_with('BP')) 
+
+HRonly1 <- HRonly %>%
+  pivot_longer(starts_with('HR'), #make visit col
+               names_to = 'visit',
+               values_to = 'HR') %>%
+  mutate(visit = case_when(visit == 'HR...9' ~ 1,
+                            visit == 'HR...11' ~ 2,
+                            visit == 'HR...13' ~ 3))
+View(HRonly1)
+
+Cards <- full_join(HRonly1, BPonly1) # join the two dat sets together, visit is same name in both, so it will combine all similar values
+View(Cards)
+
+###Get rid of difficult col names (CAPS and spaces) ####
+#### library(janitor) ####
+clean_names()
+make_clean_names()
+
+Cardsc <- Cards %>% clean_names() # now spaces are removed and everything lower case
+
+###Assign duplicate pt id to new pt id ####
+Cards1 <- Cardsc %>%
+  mutate(pat_id = case_when(pat_id == 3 & sex == 'Female' ~ 9,
+                            pat_id == 8 & month_of_birth == 12 ~ 10,
+                            pat_id == 21 ~ 18, T ~ pat_id))
+View(Cards1)
+
+###Multiple character values for Race = 'White' ####
+Cards2 <- Cards1 %>%
+  mutate(race = case_when(race %in% c('WHITE', 'Caucasian') ~ 'White', T ~ race))
+View(Cards2)
+
+###Combine 3 cols to make DOB into one column ####
+Cards3 <- Cards2 %>%
+  mutate(date_of_birth = as.Date(paste(year_birth, month_of_birth, day_birth, sep = '-'))) %>%
+  select(-c(year_birth, month_of_birth, day_birth)) %>%
+  relocate(date_of_birth, .after = pat_id) %>%
+  arrange((pat_id)) %>%
+  mutate(visit = as.character(visit)) %>%
+  mutate(pat_id = as.character(pat_id))
+View(Cards3)
+
+## Lets graph it! ####
+  Cards3 %>%
+  ggplot(aes(x = visit, y = systolic, group = pat_id, color = pat_id)) +
+  geom_line() +
+  geom_point()
+  
+
+# 3/6/25 Notes ####
+## Continuing from last class
+
+Carsdc
+
+# fix duplicate pat_id #works for original messy data, but not after joining
+  for (i in 2:nrw(PB)) {
+    if(PB$pat_id[i] == PB$pat_id[i - 1])  {
+      PB$pat_id[i] <- PB$pat_id[i] + 1
+    }
+    }
+  
+#function duplicated()
+duplicated() # tells you if there are duplicate values/characters in data
+duplicated(Cardsc$pat_id)
+
+Cardsc1 <- Cardsc %>%
+  mutate(id_fix = pat_id + cumsum(duplicated(pat_id)))
+  
+Cardsc2 <- Cardsc1 %>%
+  mutate(race_new = case_when(Race == 'Caucasian' | Race == 'WHITE' ~ 'White')) %>%
+  View()
+
+# Sort it into race-gender col
+Cards2a <- Cards2 %>%
+  mutate(Race_gender = case_when(Race == 'Asian' & Sex == 'Female' ~ 'Asian_Female')) %>%
+  View()
+
+Cards3 <- Cards2
+
+#Doing a lot in one function 
+Cardio <- Cards %>%
+  clean_names() %>%
+  mutate(pat_id = case_when(pat_id == 3 & sex == 'Female' ~ 9,
+                            pat_id == 8 & month_of_birth == 12 ~ 10,
+                            pat_id == 21 ~ 18, T ~ pat_id)) %>%
+  mutate(race = case_when(race == 'Caucasian' | race == 'WHITE' ~ 'White', T ~ race)) %>%
+  mutate(systolic = as.numeric(systolic),
+         diastolic = as.numeric(diastolic)) %>%
+  mutate(birthdate = paste(year_birth, month_of_birth, day_birth, sep = '-')) %>%
+  select(-c(year_birth, month_of_birth, day_birth)) %>%
+  mutate(pat_id = as.character(pat_id))
+  View(Cardio)
+
+Cardio %>%
+  ggplot(aes(x = visit, y = systolic, group = pat_id, color = pat_id)) +
+  geom_line() +
+  geom_point()
+
+Cardio %>%
+  ggplot(aes(y = systolic)) +
+  geom_boxplot() +
+  facet_wrap(~visit)
+
+# Change bp to define systolic and diastolic column to plot both values across the plot?
+Cardio1 <- Cardio %>%
+  pivot_longer(cols = c('systolic', diastolic),
+               names_to = 'bp_type',
+               values_to = 'bp')
+View(Cardio1)
+
+Cardio1 %>%
+  ggplot(aes(x = visit, y = bp, color = bp_type)) +
+  geom_line() +
+  facet_wrap(~bp_type) +
+  facet_grid(hispanic ~ race)
+
+## | means or ####
+# |, not I
+
+# Universal date/time ####
+YYYY-MM-DD HH:MM:SS
+
+#Cleaning another data set ####
+Bird <- read.csv('Data/Bird_Measurements.csv')
+View(Bird)
+ ##library(skimr) #### 
+# Gives overview/summary of data
+## See how many values are missing from data, decide if you want to get rid of a col or category
+
+skim(Bird)
+
+#Things to fix:
+    ## Make col for sex: Male, Female, Unspecified, combine all sex separated cols
+Bird1 <- Bird %>%
+  pivot_longer()
+    ## 
+    ##
+    ##
+    ##
+
+
+# 3/18/25 Notes ####
+# Final presentation April 22nd, 
+  ## ignore what it says our assigned final date/time is
+# No class 4/1
+
+## Assignment 6 ####
+    # Use skimr pkg skim() - tells you data distribution and other details
+    
+## Clean this data set ####
+Bird <- read.csv('Data/Bird_Measurements.csv')
+skim(Bird)
+
+##. clean bird measurement data
+## keeep: family species_number, species_name, english_name
+## Cluth size, egg mass, mating system
+
+keep = c('Family', 'Species_number', 'Species_name', 'English_name', 'Clutch_size',
+        'Egg_mass', 'Mating_System')
+        
+Male <- Bird %>%
+  select(keep, starts_with('M_'), -ends_with('_N')) %>%
+  mutate(sex = 'male') %>%
+  View()
+
+Unsexed <- Bird %>%
+  select(keep, starts_with('unsexed_'), -ends_with('_N')) %>%
+  mutate(sex = 'unsexed') %>%
+  View()
+
+Female <- Bird %>%
+  select(keep, starts_with('F_'), -ends_with('_N')) %>%
+  mutate(sex = 'female') %>%
+  View()
+
+joined_birds <- full_join(Male, Female)
+
+joined_birds1 <- full_join(joined_birds1, unsexed)
+# now lots of NA values in cols, because each sex has M, N, or Unsexed ruining combining the cols
+
+
+#fixing the names of the cols 
+names(Male) #all contain variable and M_, get rid of M_
+
+names(Male) <- names(Male) %>% str_remove('M_')
+names(Female) <- names(Female) %>% str_remove('F_')
+names(Unsexed) <- names(Unsexed) %>% str_remove('Unsexed_')
+
+#rejoin the data sets to get data without separate cols for M_, F_, Unsexed_
+
+joined_birds <- full_join(Male, Female)
+
+joined_birds1 <- full_join(joined_birds, Unsexed)
+
+View(joined_birds1)
+
+Clean <- Male %>%   # same as joining data sets above, but using pipe function instead
+  full_join(Female) %>%
+  full_join(Unsexed)
+
+View(Clean)
+
+identical(names(Male), names(Female)) # tells you whether all col names are identical or not between data sets
+identical(letters[1:3], c('a', 'b', 'c')) # Example of function?
+
+## Clean this data set ####
+## Worst Data Storage Ever
+
+Worst <- read_xlsx('Worst Data Storage Ever.xlsx')
+
+everything()
+mean()
+sd()
+read.csv(argument1, argument2, ...etc)
+
+### Making your own commands/functions ####
+#Useful for saving your cleaning codes/commands so you don't have to start fromo 0 everytime
+
+Weather <- function(){
+  print('it is cold')
+}
+
+Weather() # New function from above code, now everytime I do weather(), it will put out 'it is cold'
+
+add_numbers <- function(a,b){
+  result <- a + b
+  return(result)
+}
+
+add_numbers() # new function from above code, realize its only in my global env. and must be re-entered to use in different/clean env.
+add_numbers(2, 4)
+add_numbers(2, 4, 5, 10, 6) # won't work because there are more than the number of variables given in original function
+add_numbers(13456, 8765)
+
+## Can save your custom function to a .R file to reuse later
+#Makes it so you don't have to start from the beginning everytime you clean a data set
+
+#1. Save your function to a new .R file, maybe 'My_Function.R'
+      #Can add your packages as well
+
+#2. Source('My_Function.R')
+      #Puts your functions and whatever else you put in the file into your environment
+
+#3. Use your function!
+
+
+# 3/25/2025 Notes/Exercises ####
+## glm = geometric linear model, allows mutliple variables
+mood <- glm(data = dat_2,
+            formula = cm ~ sex)
+
+car_insurance_price = age + gender + education + marital_status + driving_history......
+
+### Build a model to predict city (mpg iin city) as a function of displ() and 
+mpg %>%
+  ggplot(aes(x = displ, y = cty)) +
+  geom_point()
+
+
+mod <- glm(data = mpg,
+           formula = cty ~ displ)
+
+summary(mod)
+
+cty = 25.99 _ (-2.63)*displ # the equation representing our model
+
+mpg %>%
+  ggplot(aes(x = displ, y = cty)) +
+  geom_point() +
+  geom_smooth(se = F)
+
+mpg %>%
+  ggplot(aes(x = displ, y = cty)) +
+  geom_point() +
+  geom_smooth(method = glm, se = F)
+
+str(mod)
+mod$model
+mod$formula
+mod$coefficients
+mod$fitted.values
+
+cty = 25.99 _ (-2.63)*displ
+plot(mod$model$cty, mod$fitted.values)
+
+
+## easystats package ####
+install.packages('easystats')
+report(mod)
+performance(mod)
+# Want AIC, AICc, BIC, and RMSE to be small, and R^2 to be close to 1
+
+check_model(mod) # checks for a lot of cool stuff, see if your assumption is valid
+
+
+# mlu-explain.github.io
+
+## improve the model!
+mod2 <- glm(data = mpg,
+            formula = cty ~ displ + manufacturer + model + trans + cyl + drv)
+summary(mod2)
+performance(mod2)
+
+#Interactions??
+mod1 <- glm(data = mpg,
+           formula = cty ~ displ)
+summary(mod1)
+
+
+mod2 <- glm(data = mpg,
+           formula = cty ~ displ + cyl) # additive model
+summary(mod2)
+
+mod3 <- glm(data = mpg,
+            formula = cty ~ displ * cyl) #interaction model
+summary(mod3)
+
+mpg %>%
+  ggplot(aes(x = displ, y = cty)) +
+  geom_smooth(method = 'glm')
+
+mpg %>%
+  ggplot(aes(x = displ, y = cty, color = factor(cyl))) +
+  geom_smooth(method = 'glm')
+
+compare_models(mod1, mod2, mod3)
+compare_performance(mod1, mod2, mod3) %>% plot()
+
+predict(mod1, mpg)
+mod1$formula
+
+plot(mod1$fitted.values, predict(mod1, mpg))
+
+cty = 25.99 - (-2.63)*displ
+
+
+## Make model 4 and compare with all other models and make a prediction
+mod4 <- glm(data = mpg,
+            formula = cty ~ displ * cyl + displ * year)
+compare_performance(mod1, mod2, mod3, mod4)
+predict(mod4)
+
+mpg
 
 #PACKAGES SHORTCUT ####
 library(palmerpenguins)
@@ -750,8 +1243,15 @@ library(patchwork)
 library(GGally)
 library(ggplot2)
 library(dplyr)
+library(grid)
+library(janitor)
+library(skimr)
+library(easystats)
 
-library(ggmap)
-
+library(ggmap) #need to get online key and stuff?
+library(png)
+library(jpeg)
+library(readxl) # read Excel files
+library(ggpubr)
 
 
