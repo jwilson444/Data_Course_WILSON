@@ -1,5 +1,11 @@
 Users/jeremywilson/Desktop/Data_Course_WILSON/Data_Course_WILSON.Rproj
 
+# Github Upload commands ####
+cd Desktop/Data_Course_WILSON
+git add .
+git commit -m "blah blah"
+git push
+
 # Final Project/Website ####
 #Don't use palmerpenguins or iris
 
@@ -1232,6 +1238,102 @@ compare_performance(mod1, mod2, mod3, mod4)
 predict(mod4)
 
 mpg
+
+
+# 3/27 Notes/Exercises ####
+## Does body weight vary significantly between penguin species? 
+obesitees <- penguins
+
+Mod1 <- glm(data = obesitees,
+      formula = body_mass_g ~ species)
+
+performance(Mod1)
+summary(Mod1)
+
+relevel() # rearranges which species is the reference group
+
+obesitees$species <- relevel(obesitees$species, ref = 'Gentoo')
+
+Mod1 <- glm(data = obesitees,
+            formula = body_mass_g ~ species)
+summary(Mod1)
+
+obesitees$species <- factor(obesitees$species, levels = c('Gentoo', 'Chinstrap', 'Adelie')) # Reorders the species for reference
+
+Mod1 <- glm(data = obesitees,
+            formula = body_mass_g ~ species)
+summary(Mod1)
+
+
+names(obesitees)
+view(obesitees)
+
+obesitees1 <- obesitees %>%
+  mutate(gentoo = case_when(species == 'Gentoo' ~ T,
+                            T ~ F))
+
+Mod2 <- glm(data = obesitees1,
+    formula = gentoo ~ bill_length_mm + bill_depth_mm + flipper_length_mm + body_mass_g,
+    family = 'binomial')
+
+predict(Mod2, obesitees1, type = 'response')
+
+obesitees1$pred <- predict(Mod2, obesitees1, type = 'response')
+
+obesitees1 %>%
+  ggplot(aes(x = body_mass_g, y = pred, color = species)) +
+  geom_point()
+
+pred <- obesitees1 %>%
+  mutate(outcome = case_when(pred < 0.01 ~ 'Not Gentoo',
+                             pred > 0.75 ~ 'Gentoo')) %>%
+  select(species, outcome) %>% 
+  mutate(accurate = case_when(species == 'Gentoo' & outcome == 'Gentoo' ~ T,
+         species != 'Gentoo' & outcome == 'Not Gentoo' ~ T,
+         T ~ F)) %>%
+  View()
+
+
+pred %>%
+  pluck('accurate') %>%
+  sum()/nrow(pred)
+
+
+
+#3 keys fr log
+  ##T & F in data set
+  ##
+  ## Not all data sets have the T/F set up already
+
+
+## Build a logical regressiion model and predict the admission of grad school
+## Data/GradSchool_Admission.csv
+grads <- read.csv(file = '../../Data/GradSchool_Admissions.csv')
+
+View(grads)
+
+gradmod <- glm(data = grads,
+               formula = as.logical(admit) ~ (gre + gpa) * rank,
+               family = 'binomial')
+
+# main effect: gre, gpa, rank
+# interaction: gre:rank, gpa:rank
+
++ additive
+: interaction
+* both additive and interactive
+
+grads1 <- grads %>%
+  mutate(accepted = case_when(admit = 1 ~ T, )) 
+
+
+
+
+
+
+
+
+
 
 #PACKAGES SHORTCUT ####
 library(palmerpenguins)
