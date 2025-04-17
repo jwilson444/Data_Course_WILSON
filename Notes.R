@@ -1323,10 +1323,188 @@ gradmod <- glm(data = grads,
 : interaction
 * both additive and interactive
 
-grads1 <- grads %>%
+grads <- grads %>%
   mutate(accepted = case_when(admit = 1 ~ T, )) 
 
+# 4/3/25 Class Notes ####
+# Continuing grad school stuff from last class
+## Build a logical regressiion model and predict the admission of grad school
+## Data/GradSchool_Admission.csv
+grads <- read.csv(file = 'Data/GradSchool_Admissions.csv')
 
+gradmodel <- glm(data = grads,
+                 formula = as.logical(admit) ~ (gre + gpa) * rank,
+                 family = 'binomial')
+
+gradmodel1 <- glm(data = grads,
+                 formula = as.logical(admit) ~ gre + gpa + rank,
+                 family = 'binomial')
+
+gradmodel2 <- glm(data = grads,
+                  formula = as.logical(admit) ~ gre + gpa * rank,
+                  family = 'binomial')
+gradmodel3 <- glm(data = grads,
+                     formula = as.logical(admit) ~ gre * gpa * rank,
+                     family = 'binomial')
+
+compare_performance(gradmodel1, gradmodel2, gradmodel3) %>% plot()
+
+grads$pred1 <- predict(gradmodel3, grads, type = 'response')
+
+## Check accuracy of model ####
+#Find parameters of values
+grads$pred1 %>% summary()
+#Mean is 0.3175, 3rd quartile is 0.422
+
+grads <- grads %>%
+  mutate(outcome = case_when(pred1 > 0.4 ~ 'Admit',
+                             pred1 >= 0.2 & pred1 <= 0.4 ~ 'Unsure',
+                             pred1 < 0.2 ~ 'Denied')) %>%
+  select(admit, outcome) %>% 
+  mutate(accurate = case_when(admit == 1 & outcome == 'Admit' ~ T,
+                              admit == 0 & outcome == 'Denied' ~ T,
+                              T ~ F))
+grads %>%
+  pluck('accurate') %>%
+  sum()/nrow()
+
+sum(pred1$accurate)
+nrow(pred1)
+# Package MASS
+install.packages('MASS')
+
+### Find the smallest AIC among all possible models ####
+full_model <- glm(data = grads,
+                  formula = as.logical(admit) ~ gre*gpa*rank,
+                  family = 'binomial')
+full_model$formula
+summary(full_model)
+
+#Code to check the AIC of all the models (combinations of each factor)
+stepwise_mod <- stepAIC(full_model, direction = 'both')
+
+stepwise_mod$formula
+
+best_model <- glm(data = grads,
+                  formula = stepwise_mod$formula,
+                  family = 'binomial')
+
+compare_performance(gradmodel, gradmodel1, gradmodel2, gradmodel3, best_model) %>% plot()
+
+grads$pred2 <- predict(best_model, grads, type = 'response')
+View(grads)
+
+grads <- grads %>%
+  mutate(outcome2 = case_when(pred2 > 0.4 ~ 'Admit',
+                             pred2 >= 0.2 & pred1 <= 0.4 ~ 'Unsure',
+                             pred2 < 0.2 ~ 'Denied')) %>%
+  select(admit, outcome2) %>% 
+  mutate(accurate2 = case_when(admit == 1 & outcome2 == 'Admit' ~ T,
+                              admit == 0 & outcome2 == 'Denied' ~ T,
+                              T ~ F))
+grads %>%
+  pluck('accurate2') %>%
+  sum()/nrow()
+
+# package caret ####
+install.packages('caret')
+
+?createDataPartition()
+
+id <- createDataPartition(grads$admit, p = 0.8, list = F)
+grads_train <- grads[id, ]
+dim(grads_train) #320   6
+dim(grads) #400   6
+
+train_mod <- glm(data = grads_train,
+                 formula = stepwise_mod$formula,
+                 family = 'binomial')
+
+grads_test$pred1 <- predict(train_mod, grads_test, type = 'response')
+
+
+# 4/8/25 Notes ####
+## glm() vs anova
+## Anova used to see which component contributes to a specific part of the dataset
+## assumes your data is normal distribution
+mod <- aov(data = penguins,
+           formula = body_mass_g ~ species + sex + year)
+
+summary(mod)
+
+mod_glm <- glm(data = penguins,
+           formula = body_mass_g ~ species)
+
+summary(mod_glm)
+
+
+# 4/10/25 & 4/15/25 Notes ####
+## For final project ####
+# Use free github website templates
+bootstrapmade something
+hugo themes
+# Figure out what goes where
+
+# index for front page, link to take you to my different htmls from there
+
+# make folder called media to make it easier to find images and plots you want to use?
+
+#Title thing to link to different htmls
+## [ABOUT ME] (./about-me/Fearn_CV.pdf) |
+# [BIOL - 3100-Final_Project](./fp) #name of .Rmd file
+
+#Picture (on Index.Rmd)
+```{r, out.width="60%", echo=FALSE}
+knitr::include_graphics("../../picture")
+```
+
+
+AlecAdam.github.io
+
+
+# 3D Plot!! ####
+#3D plot
+install.packages('plotly')
+library(plotly)
+
+# Create grid of values for GRE, GPA, and fixed rank
+grid_data <- expand_grid(
+  gre = seq(min(admits$gre), max(admits$gre), length.out = 50),
+  gpa = seq(min(admits$gpa), max(admits$gpa), length.out = 50),
+  rank = 1  # fix rank so you can see a 2D surface
+)
+
+# Predict probabilities using your model
+grid_data <- grid_data %>%
+  mutate(pred = predict(mod6, newdata = ., type = "response"))
+
+# Convert to wide format for 3D surface
+z_matrix <- matrix(grid_data$pred, nrow = 50, ncol = 50)
+
+# Make 3D plot with axis labels and hover info
+plot_ly(
+  x = ~unique(grid_data$gre),
+  y = ~unique(grid_data$gpa),
+  z = ~z_matrix,
+  type = "surface",
+  hoverinfo = "x+y+z",
+  colorscale = "Viridis"
+) %>%
+  layout(
+    title = "3D Prediction Surface (Rank = 1)",
+    scene = list(
+      xaxis = list(title = "GRE Score"),
+      yaxis = list(title = "GPA"),
+      zaxis = list(title = "Predicted Admission Probability")
+    )
+  )
+
+
+
+install.packages('ggeffects')
+library(ggeffects)
+
+plot(ggpredict(mod6, terms = c("gre", "gpa", "rank")))
 
 
 
@@ -1346,9 +1524,11 @@ library(GGally)
 library(ggplot2)
 library(dplyr)
 library(grid)
+library(easystats)
 library(janitor)
 library(skimr)
-library(easystats)
+library(MASS)
+library(caret)
 
 library(ggmap) #need to get online key and stuff?
 library(png)

@@ -1,0 +1,180 @@
+---
+title: "Admissions Analysis - Good Luck!"
+output: 
+  html_document:
+    theme: darkly
+    toc: true
+    toc_float: true
+date: "2025-04-17"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(gapminder)
+library(tidyverse)
+library(patchwork)
+library(GGally)
+library(ggplot2)
+library(dplyr)
+library(grid)
+library(easystats)
+library(janitor)
+library(skimr)
+library(MASS)
+library(caret)
+library(ggpubr)
+admits <- read.csv('../../Data/GradSchool_Admissions.csv')
+```
+
+### I will be analyzing the dataset gradschool admissions for Assignment 9.
+
+Loading the needed packages:
+
+```{r}
+library(gapminder)
+library(tidyverse)
+library(patchwork)
+library(GGally)
+library(ggplot2)
+library(dplyr)
+library(grid)
+library(easystats)
+library(janitor)
+library(skimr)
+library(MASS)
+library(caret)
+library(ggpubr)
+```
+
+Next, we'll want to look at the dataset
+
+```{r}
+glimpse(admits)
+```
+
+The column admit is classified as number, as will be seen, this will need to be classified as logical for later analysis.
+
+The goal of this assignment is to analyze the variable and create a good model to predict the probability of being accepted to graduate school.
+
+## Previewing the data with plots
+
+The data is first plotted to look for any obvious correlations between a single variable and admit.
+
+```{r admits}
+ggpairs(admits)
+```
+
+Reviewing the plots, there does not seem to be any single variable with a strong correlation to admit.
+
+## Model Building
+
+Next, models should be developed to see if any combinations of variables are good at predicting the data. First, I'll look at gre and gpa as an additive model for admit.
+
+```{r}
+mod1 <- glm(data = admits,
+            formula = as.logical(admit) ~ gre + gpa,
+            family = 'binomial')
+performance(mod1)
+```
+
+The model is not great, so let's try gre and gpa as additive and interactive
+
+```{r}
+mod2 <- glm(data = admits,
+            formula = as.logical(admit) ~ gre * gpa,
+            family = 'binomial')
+performance(mod2)
+```
+
+Now let's try adding in rank, I'll just put all of the combinations attempted for these three variables.
+
+```{r}
+mod3 <- glm(data = admits,
+            formula = as.logical(admit) ~ gre * gpa * rank,
+            family = 'binomial')
+
+mod4 <- aov(data = admits,
+             formula = as.logical(admit) ~ gre * gpa * rank)
+
+mod5 <- glm(data = admits,
+            formula = as.logical(admit) ~ (gre + gpa) * rank,
+            family = 'binomial')           
+
+mod6 <- glm(data = admits,
+            formula = as.logical(admit) ~ (gre * gpa) + rank,
+            family = 'binomial')  
+compare_performance(mod1, mod2, mod3, mod4, mod5, mod6)
+```
+
+Based on the AIC, RMSE, and R2 values, it appears that model 6 is the best model. To verify this, I will also do an analysis using the stepwise() function to verify what model is best.
+
+```{r}
+full_model <- glm(data = admits,
+                  formula = as.logical(admit) ~ gre * gpa * rank,
+                  family = 'binomial')
+
+stepwise_mod <- stepAIC(full_model, direction = 'both')
+
+best_model <- glm(data = admits,
+                  formula = stepwise_mod$formula,
+                  family = 'binomial')
+compare_performance(mod1, mod2, mod3, mod4, mod5, mod6, best_model)
+```
+
+It does appear that mod6 is best, as it matches with our best model. As a final verification, we can do a radar chart to see which model is best.
+
+```{r }
+compare_performance(mod1, mod2, mod3, mod4, mod5, mod6, best_model) %>% plot()
+```
+
+## Making predictions from the best model
+
+```{r}
+admits$pred1 <- predict(mod6, admits, type = 'response')
+
+admits$pred1 %>% summary() 
+```
+
+Now we can add the following colums to our admits dataset to help verify how well the model predicts the data with the following:
+
+```{r}
+admits <- admits %>%
+  mutate(outcome = case_when(pred1 > 0.42 ~ 'Admit',
+                             pred1 <= 0.42 ~ 'Denied')) %>%
+  mutate(accurate = case_when(admit == 1 & outcome == 'Admit' ~ T,
+                              admit == 0 & outcome == 'Denied' ~ T,
+                              T ~ F))
+
+overall_accuracy <- admits %>%
+  summarise(accuracy = mean(accurate)) %>%
+  pull(accuracy)
+
+print(paste0("Overall model accuracy: ", round(overall_accuracy * 100, 2), "%"))
+```
+
+This shows that the model predicts the data correctly about 71% of the time based on the parameters I set.
+
+## Plotting the model predictions
+
+Lastly, I can plot the model predictions of the data, including hypothetical predictions.
+
+```{r}
+new_data <- expand_grid(
+  gre = seq(min(admits$gre), max(admits$gre), length.out = 50),
+  gpa = quantile(admits$gpa, probs = c(0.25, 0.5, 0.75)),  # use a few fixed GPA values
+  rank = 1:4)
+
+new_data <- new_data %>%
+  mutate(pred = predict(mod6, newdata = new_data, type = "response"))
+
+ggplot(new_data, aes(x = gre, y = pred, color = factor(gpa))) +
+  geom_line() +
+  facet_wrap(~ rank) +
+  labs(title = "Predicted Probability by GRE, GPA, and Rank",
+       x = "GRE Score", y = "Predicted Admission Probability", color = "GPA") +
+  theme_minimal()
+```
+
+## Conclusion
+
+Model 6 is the best model and can accurately predict the probability of admission about 71% of the time.
