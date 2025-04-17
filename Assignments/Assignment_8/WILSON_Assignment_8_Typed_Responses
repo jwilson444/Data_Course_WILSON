@@ -1,0 +1,32 @@
+8. Upload responses to the following as a numbered plaintext document to Canvas:
+a. Are any of your predicted response values from your best model scientifically meaningless? Explain.
+Some of the predicted response values from my best model were scientifically meaningless. For example, when humidity is high, the linear model predicts a decrease in growth rate as temperature increases. As temperature reaches 30 and 40 degrees celsius, the predicted growth rate is negative. A negative growth rate is not possible and is thus meaningless.
+
+b. In your plots, did you find any non-linear relationships? Do a bit of research online and give a link to at least one resource explaining how to deal with modeling non-linear relationships in R. 
+I believe there was a non-linear relationship between humidity and the other factors. I say this because when the values are plotted together for the given values in my new data set, it appears exponential in nature.
+https://noamross.github.io/gams-in-r-course/
+
+c. Write the code you would use to model the data found in “/Data/non_linear_relationship.csv” with a linear model (there are a few ways of doing this) 
+nonlinear <- read.csv('../../Data/non_linear_relationship.csv')
+summary(nonlinear)
+View(nonlinear)
+
+plot(nonlinear$predictor, nonlinear$response,
+     main = 'Response vs Predictor',
+     xlab = 'Predictor',
+     ylab = 'Response',
+     pch = 19, col = 'blue')
+
+model_raw <- lm(response ~ predictor, data = nonlinear)
+abline(model_raw, col = "red", lwd = 2) 
+summary(model_raw)
+
+nonlinear$predictor_sq <- nonlinear$predictor^2
+model_quad <- lm(response ~ predictor + predictor_sq, data = nonlinear)
+summary(model_quad)
+
+pred_vals <- seq(min(nonlinear$predictor), max(nonlinear$predictor), length.out = 100)
+pred_df <- data.frame(predictor = pred_vals, predictor_sq = pred_vals^2)
+lines(pred_vals, predict(model_quad, newdata = pred_df), col = "darkgreen", lwd = 2)
+
+compare_performance(model_raw, model_quad) %>% plot()

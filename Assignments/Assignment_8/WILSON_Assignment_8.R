@@ -116,13 +116,11 @@ combined_plot_data %>%
 
 
 ## 8. Upload responses to the following as a numbered plaintext document to Canvas: ####
-
-
 ### a. Are any of your predicted response values from your best model scientifically meaningless? Explain. ####
-Some of the predicted response values from my best model were scientifically meaningless. For example, when humidity is high, the linear model predicts a decrease in growth rate as temperature increases. As temperature reaches 30 and 40 degrees celsius, the predicted growth rate is negative. A negative growth rate is not possible and is thus meaningless.
+#Some of the predicted response values from my best model were scientifically meaningless. For example, when humidity is high, the linear model predicts a decrease in growth rate as temperature increases. As temperature reaches 30 and 40 degrees celsius, the predicted growth rate is negative. A negative growth rate is not possible and is thus meaningless.
 
 ### b. In your plots, did you find any non-linear relationships? Do a bit of research online and give a link to at least one resource explaining how to deal with modeling non-linear relationships in R. ####
-I believe there was a non-linear relationship between humidity and the other factors. I say this because when the values are plotted together for the given values in my new data set, it appears exponential in nature.
+#I believe there was a non-linear relationship between humidity and the other factors. I say this because when the values are plotted together for the given values in my new data set, it appears exponential in nature.
 https://noamross.github.io/gams-in-r-course/
 
 ### c. Write the code you would use to model the data found in “/Data/non_linear_relationship.csv” with a linear model (there are a few ways of doing this) ####
