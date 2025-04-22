@@ -1,0 +1,124 @@
+---
+title: "Wilson_Exam_3"
+output: html_document
+---
+
+# 1. Load and clean FacultySalaries_1995.csv file and Re-create the graph below… 
+
+### Setup
+
+Load libraries and read in the csv file
+``` {r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(gapminder)
+library(tidyverse)
+library(ggimage)
+library(patchwork)
+library(GGally)
+library(ggplot2)
+library(dplyr)
+library(grid)
+library(easystats)
+library(janitor)
+library(skimr)
+library(caret)
+library(broom)
+library(purrr)
+fac <- read.csv('FacultySalaries_1995.csv')
+str(fac)
+```
+
+### Clean the Data
+Make sure col names are clean, each col is the appropriate class, and combine chemical ID's into one column and Concentration in another.
+``` {r}
+fac_cleaned <- fac %>%
+  clean_names() %>%
+  mutate(across(starts_with("avg_"), as.numeric)) %>%
+  mutate(across(where(is.character), trimws)) %>%
+  drop_na()
+
+glimpse(fac_cleaned)
+
+fac1 <- fac_cleaned %>%
+  pivot_longer(cols = c(avg_full_prof_salary, avg_assoc_prof_salary, avg_assist_prof_salary),
+               names_to = 'rank',
+               values_to = 'salary') %>%
+  mutate(rank = case_when(rank == 'avg_full_prof_salary' ~ "Full",
+                          rank == 'avg_assoc_prof_salary' ~ "Assoc",
+                          rank == 'avg_assist_prof_salary' ~ "Assist",
+                          T ~ rank))
+glimpse(fac1)
+```
+
+### Make the Plot
+``` {r}
+fac1_plot <- fac1 %>%
+  filter(tier %in% c('I', 'IIA', 'IIB')) %>%
+  ggplot(aes(x = rank, y = salary, fill = rank)) +
+  geom_boxplot() +
+  theme_minimal() +
+  facet_wrap(~tier) +
+  labs(x = 'Rank', y = 'Salary', fill = 'Rank') +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))
+fac1_plot
+```
+
+# 2. Build an ANOVA model and display the summary output in your report.
+
+``` {r}
+fac_mod <- aov(data = fac1,
+           formula = salary ~ state + rank + tier)
+
+summary(fac_mod)
+```
+
+# 3. The rest of the test uses another data set. The “Juniper_Oils.csv” data. Get it loaded and take a look. Then tidy it! (show the code used for tidying in your report)
+
+``` {r}
+jun <- read.csv('Juniper_Oils.csv')
+glimpse(jun)
+
+names(x = jun)
+
+jun_cleaned <- jun %>%
+  clean_names() %>%
+  pivot_longer(cols = c("alpha_pinene","para_cymene","alpha_terpineol","cedr_9_ene","alpha_cedrene","beta_cedrene","cis_thujopsene","alpha_himachalene","beta_chamigrene","cuparene","compound_1","alpha_chamigrene","widdrol","cedrol","beta_acorenol","alpha_acorenol","gamma_eudesmol","beta_eudesmol","alpha_eudesmol","cedr_8_en_13_ol","cedr_8_en_15_ol","compound_2","thujopsenal"),
+               names_to = 'chemical',
+               values_to = 'concentration') %>%
+  mutate(concentration = as.numeric(concentration),
+         years_since_burn = as.numeric(years_since_burn))
+
+glimpse(jun_cleaned)
+```
+
+# 4. Make me a graph of the following:
+ x = YearsSinceBurn
+ y = Concentration
+ facet = ChemicalID (use free y-axis scales)
+
+``` {r}
+jun_plot <- jun_cleaned %>%
+  ggplot(aes(x = years_since_burn, y = concentration)) +
+  geom_smooth() +
+  facet_wrap(~chemical, scales = 'free_y') +
+  theme_minimal() +
+  labs(x = "Concentration", y = "Years Since Burn")
+jun_plot
+```
+
+# 5. Use a generalized linear model to find which chemicals show concentrations that are significantly (significant, as in P < 0.05) affected by “Years Since Burn”. 
+
+``` {r}
+significant_chemicals <- jun_cleaned %>%
+  group_by(chemical) %>%
+  group_modify(~ tidy(glm(concentration ~ years_since_burn, data = .x))) %>%
+  filter(term == "years_since_burn", p.value < 0.05) %>%
+  select(chemical, term, estimate, std.error, statistic, p.value) %>%
+  arrange(p.value)
+
+print(significant_chemicals)
+```
+
+# 6. Commit and push all your code and files to GitHub. I’ll pull your repository and grade what I find in your html report. ####
+
+### DONE!
